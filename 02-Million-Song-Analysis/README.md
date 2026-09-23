@@ -1,4 +1,4 @@
-# Million Song Dataset – Large-Scale Music Analytics & Recommendation System
+# Million Song Dataset - Large-Scale Music Analytics & Recommendation System
 
 ## Project Overview
 
