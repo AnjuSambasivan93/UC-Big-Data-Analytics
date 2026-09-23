@@ -1,94 +1,171 @@
-# GHCN Climate Data Analysis Using Apache Spark
+# Global Climate Data Analysis Using Apache Spark
 
 ## Project Overview
 
-This project explores and analyses the Global Historical Climatology Network Daily (GHCN-Daily) dataset using Apache Spark and PySpark.
+This project analyses large-scale historical climate data from the **Global Historical Climatology Network Daily (GHCN-Daily)** dataset using **Apache Spark and PySpark**.
 
-The main challenge was the scale of the dataset. The complete daily dataset contains more than 3.1 billion weather observations and approximately 13 GB of compressed data. Because this volume of data is not practical to process using normal in-memory approaches, Apache Spark was used for distributed data processing.
+The project was designed to work with climate data at a scale that requires distributed processing. The complete daily dataset contained more than **3.13 billion weather observations**, covering historical records from **1750 to 2025**.
 
-The project covers the complete analytical workflow:
+The analysis combines large-scale data processing, data quality validation, metadata integration, geospatial analysis, time-series analysis, statistical analysis, and visualisation.
 
-1. Understanding the raw data
-2. Defining schemas and loading data
-3. Cleaning and transforming data
-4. Combining multiple metadata sources
-5. Optimising Spark operations
-6. Analysing weather stations and observations
-7. Performing geospatial analysis
-8. Analysing New Zealand temperature trends
-9. Analysing global precipitation patterns
-10. Creating time-series and geospatial visualisations
+The project focused on three major areas:
+
+1. **Processing and enriching global weather-station data**
+2. **Analysing billions of historical weather observations using PySpark**
+3. **Investigating New Zealand temperature trends and global precipitation patterns**
+
+A major focus was learning how to process large datasets efficiently without attempting to load the complete dataset into local memory.
 
 ---
 
 ## Technologies Used
 
+- Python
 - Apache Spark
 - PySpark
-- Python
 - Microsoft Azure
 - Azure Blob Storage
 - Spark DataFrames
 - Pandas
+- NumPy
+- SciPy
 - Matplotlib
 - Plotly
-- SciPy
 - Parquet
 - Jupyter Notebook
+- Statistical Analysis
+- Geospatial Analysis
+- Time-Series Analysis
 
 ---
 
-## Dataset
+# Dataset
 
-The project uses the Global Historical Climatology Network Daily (GHCN-Daily) dataset.
+The project uses the **Global Historical Climatology Network Daily (GHCN-Daily)** dataset.
 
-The dataset contains historical weather observations collected from weather stations around the world.
+GHCN-Daily contains historical weather observations collected from weather stations around the world.
 
-The main weather elements analysed were:
+The project worked with both:
+
+- Daily climate observations
+- Weather-station metadata
+
+The main daily weather elements analysed were:
 
 | Element | Description |
 |---|---|
-| TMAX | Maximum daily temperature |
-| TMIN | Minimum daily temperature |
-| PRCP | Daily precipitation |
-| SNOW | Daily snowfall |
-| SNWD | Snow depth |
+| `PRCP` | Precipitation |
+| `TMAX` | Maximum daily temperature |
+| `TMIN` | Minimum daily temperature |
+| `SNOW` | Snowfall |
+| `SNWD` | Snow depth |
 
-Additional metadata was available for:
+The station metadata contained information such as:
 
-- Weather stations
-- Countries
-- US states
-- Station element inventories
-- Geographic coordinates
-- Station elevation
-- Station operating periods
-- Climate monitoring networks
-
-The data was stored in Azure Blob Storage and accessed using Apache Spark.
+- Station ID
+- Station name
+- Country
+- State
+- Latitude
+- Longitude
+- Elevation
+- First active year
+- Last active year
+- Available weather elements
+- Climate monitoring network information
 
 ---
 
-## Dataset Scale
+# Dataset Scale
 
 The complete daily dataset contained:
 
 - **3,139,143,397 weather observations**
-- **129,657 weather stations**
-- Approximately **13 GB of compressed daily data**
 - Historical observations from **1750 to 2025**
+- Approximately **13 GB** of compressed daily data
+- **129,657 weather stations** in the station metadata
 
-This scale made efficient Spark processing important. Large datasets were processed using Spark DataFrames rather than being loaded into local memory.
+The scale of the dataset made Apache Spark suitable for processing the data using distributed operations rather than loading the entire dataset into local memory.
 
 ---
 
-# 1. Data Processing
+# Project Workflow
 
-## Loading the Data
+The overall workflow was:
 
-The daily weather observations were stored as CSV files.
+```text
+GHCN Raw Data
+      │
+      ├── Daily Weather Observations
+      │
+      └── Station / Country / State / Inventory Metadata
+      │
+      ▼
+PySpark Data Loading
+      │
+      ▼
+Schema Definition & Fixed-Width Parsing
+      │
+      ▼
+Cleaning & Metadata Integration
+      │
+      ▼
+Enriched Station Dataset
+      │
+      ▼
+Parquet Storage
+      │
+      ▼
+Large-Scale Spark Analysis
+      │
+      ├───────────────┬─────────────────┐
+      ▼               ▼                 ▼
+Station Analysis   NZ Temperature   Global Precipitation
+      │               │                 │
+      ▼               ▼                 ▼
+Geospatial        Time-Series        Data Quality
+Analysis          Analysis            Analysis
+      │               │                 │
+      └───────────────┴─────────────────┘
+                      │
+                      ▼
+                 Visualisation
+```
 
-I created an explicit PySpark schema containing fields such as:
+---
+
+# 1. Data Exploration
+
+The first stage of the project involved understanding how the GHCN data was organised in Azure Blob Storage.
+
+The dataset contained several different files and formats, including:
+
+- Daily weather observations
+- Weather-station metadata
+- Country metadata
+- State metadata
+- Station inventory information
+
+Before performing analysis, I investigated:
+
+- File structure
+- File sizes
+- Data formats
+- Number of records
+- Column structures
+- Data types
+- Missing values
+- Relationships between datasets
+
+This helped determine the appropriate loading and processing strategy for each dataset.
+
+---
+
+# 2. Loading Daily Weather Data
+
+The daily observations were processed using Apache Spark.
+
+An explicit PySpark schema was defined for fields including:
 
 - Station ID
 - Date
@@ -99,40 +176,82 @@ I created an explicit PySpark schema containing fields such as:
 - Source flag
 - Observation time
 
-Using an explicit schema helped ensure that dates, numeric measurements, and categorical fields were represented using appropriate data types.
+Using an explicit schema ensured that fields such as dates and measurements were loaded using appropriate data types.
+
+The general process was:
+
+```text
+Daily Climate Files
+        ↓
+Define PySpark Schema
+        ↓
+Load with Spark
+        ↓
+Validate Data Types
+        ↓
+Clean / Filter
+        ↓
+Large-Scale Analysis
+```
 
 ---
 
-## Processing Fixed-Width Metadata
+# 3. Processing Fixed-Width Metadata
 
-The station, country, state, and inventory datasets were stored as fixed-width text files.
+Some GHCN metadata files were stored as **fixed-width text files** rather than standard CSV files.
 
-Because these files could not be loaded directly like standard CSV files, I read them using:
+These included information about:
 
-`Spark.read.text()`
+- Stations
+- Countries
+- States
+- Station inventories
 
-and extracted individual fields using PySpark substring operations.
+The files were loaded using:
 
-This allowed information such as station IDs, latitude, longitude, elevation, country codes, station names, and operating periods to be converted into structured Spark DataFrames.
+```python
+spark.read.text()
+```
+
+Fields were then extracted from fixed character positions using PySpark string operations such as `substring()`.
+
+For example, station information could be separated into:
+
+```text
+Station ID
+Latitude
+Longitude
+Elevation
+State
+Station Name
+Network Information
+```
+
+This converted unstructured fixed-width text into structured Spark DataFrames that could be joined with other datasets.
 
 ---
 
-## Creating Enriched Station Metadata
+# 4. Station Metadata Integration
 
-Several metadata datasets were combined to create a single enriched station dataset.
+Multiple metadata sources were combined to create a more useful weather-station dataset.
 
-The workflow included:
+The processing workflow included:
 
-1. Extracting the country code from each station ID
-2. Joining stations with country information
-3. Joining US stations with state information
-4. Aggregating station inventory information
-5. Determining each station's first and last active year
-6. Counting weather elements recorded by each station
-7. Identifying core weather elements
-8. Combining all information into one station-level dataset
+```text
+Station Metadata
+      │
+      ├── Country Metadata
+      ├── State Metadata
+      └── Inventory Metadata
+      │
+      ▼
+Spark Joins & Aggregations
+      │
+      ▼
+Enriched Station Dataset
+```
 
-The resulting dataset contained information such as:
+The enriched dataset contained information such as:
 
 - Station ID
 - Station name
@@ -144,294 +263,820 @@ The resulting dataset contained information such as:
 - First active year
 - Last active year
 - Number of weather elements
-- Climate monitoring network information
+- Core weather elements
+- Monitoring-network information
 
-The enriched station dataset was saved in **Parquet format** to Azure Blob Storage.
-
-Parquet was selected because it provides efficient columnar storage, compression, and schema preservation.
-
----
-
-# 2. Spark Join Optimisation
-
-One part of the project investigated whether weather observations contained station IDs that were missing from the station metadata.
-
-I initially explored a LEFT JOIN approach.
-
-However, joining the entire multi-billion-row daily dataset with all station metadata would require unnecessary data movement and memory.
-
-A more efficient approach was implemented using a **LEFT ANTI JOIN** on distinct station IDs.
-
-This reduced the amount of data involved in the comparison and provided a more efficient way to identify unmatched stations.
-
-The final check found that all station IDs in the complete daily dataset were represented in the station metadata.
-
-This part of the project helped demonstrate the importance of choosing appropriate Spark operations when working with large datasets.
+This provided a reusable station-level dataset for later analysis.
 
 ---
 
-# 3. Weather Station Analysis
+# 5. Parquet Storage
 
-After preparing the data, I used PySpark DataFrame operations such as:
+After processing and enriching the station metadata, the resulting DataFrame was saved to Azure Blob Storage using **Parquet format**.
 
-- `filter()`
-- `groupBy()`
-- `agg()`
-- `join()`
-- `collect_set()`
+Parquet was useful because it provides:
 
-to investigate the weather station network.
+- Columnar storage
+- Compression
+- Schema preservation
+- Efficient reading of selected columns
+- Better suitability for analytical workloads
 
-The analysis included:
+The workflow therefore became:
 
-- Total number of stations
-- Active stations
-- Climate monitoring network membership
-- Northern and Southern Hemisphere distribution
-- Country-level station distribution
-- US state and territory distribution
-
-The dataset contained **129,657 unique weather stations**.
-
----
-
-# 4. Geospatial Analysis
-
-I also performed geospatial analysis on New Zealand weather stations.
-
-A **Haversine distance function** was implemented to calculate the geographic distance between two locations using latitude and longitude.
-
-The Python function was registered as a Spark User Defined Function (UDF).
-
-New Zealand stations were then compared using a Spark CROSS JOIN, and the Haversine function was applied to calculate pairwise distances.
-
-This demonstrated how custom geographic calculations can be incorporated into a Spark workflow.
+```text
+Raw Metadata
+      ↓
+PySpark Processing
+      ↓
+Cleaned & Enriched Data
+      ↓
+Parquet
+      ↓
+Reuse in Later Analysis
+```
 
 ---
 
-# 5. Large-Scale Weather Observation Analysis
+# 6. Optimising Large-Scale Joins
+
+One important part of the project involved checking whether station IDs appearing in the daily observations were missing from the station metadata.
+
+A straightforward approach would have been to perform a large `LEFT JOIN`.
+
+However, the daily dataset contained billions of records, so joining the entire dataset unnecessarily would have been computationally expensive.
+
+Instead, I used a more efficient strategy based on:
+
+```text
+Distinct Station IDs
+        +
+Station Metadata
+        ↓
+LEFT ANTI JOIN
+```
+
+A **LEFT ANTI JOIN** returns records from the left dataset that do not have a matching record in the right dataset.
+
+Conceptually:
+
+```text
+Daily Station IDs
+        │
+        ├──── Match ──── Station Metadata
+        │
+        ▼
+Unmatched Station IDs
+```
+
+This allowed the validation to focus on station identifiers instead of joining billions of complete observation records.
+
+The analysis confirmed that the station IDs in the complete daily dataset were represented in the station metadata.
+
+This part of the project demonstrated an important big-data principle:
+
+> The way an operation is designed can be just as important as the result when processing billions of records.
+
+---
+
+# 7. Weather Station Analysis
+
+After preparing the station metadata, I performed exploratory analysis using PySpark DataFrame operations.
+
+Operations included:
+
+```python
+filter()
+groupBy()
+agg()
+join()
+collect_set()
+```
+
+The analysis investigated:
+
+- Total weather stations
+- Active weather stations
+- Country distribution
+- State and territory distribution
+- Northern and Southern Hemisphere stations
+- Climate monitoring networks
+- Weather elements recorded by stations
+
+The metadata contained **129,657 weather stations**.
+
+This stage demonstrated how Spark can be used for exploratory analysis without moving large datasets into Pandas.
+
+---
+
+# 8. Core Weather Element Analysis
 
 The complete daily dataset contained:
 
 **3,139,143,397 observations.**
 
-The five main weather elements were analysed using PySpark.
+The five main weather elements were counted using Spark.
 
-| Weather Element | Observations |
+| Weather Element | Number of Observations |
 |---|---:|
-| Precipitation (PRCP) | 1,079,767,077 |
-| Maximum Temperature (TMAX) | 460,114,659 |
-| Minimum Temperature (TMIN) | 458,928,768 |
-| Snowfall (SNOW) | 359,249,644 |
-| Snow Depth (SNWD) | 300,711,620 |
+| Precipitation (`PRCP`) | **1,079,767,077** |
+| Maximum Temperature (`TMAX`) | **460,114,659** |
+| Minimum Temperature (`TMIN`) | **458,928,768** |
+| Snowfall (`SNOW`) | **359,249,644** |
+| Snow Depth (`SNWD`) | **300,711,620** |
 
-Precipitation was the most frequently recorded weather element.
+Precipitation was therefore the most frequently recorded of the five core weather elements.
+
+These counts also illustrate the scale of the data being processed.
 
 ---
 
-## Missing TMIN Investigation
+# 9. Data Completeness – TMAX and TMIN
 
-An additional data-quality investigation examined situations where a station reported maximum temperature (TMAX) but did not report minimum temperature (TMIN) for the same date.
+A data-quality investigation was performed to determine how often a maximum temperature observation existed without a corresponding minimum temperature observation.
 
-The data was grouped by:
+The comparison was performed using:
 
-- Station ID
-- Date
+```text
+Station ID + Date
+```
 
-The available weather elements for each station-date combination were then compared.
+The weather elements available for each station-date combination were grouped and compared.
 
 The analysis identified:
 
 - **10,660,214 TMAX observations without matching TMIN**
-- **28,754 stations contributing to these observations**
+- **28,754 stations associated with unmatched TMAX observations**
 
-This highlighted the importance of checking data completeness before performing climate analysis.
+This demonstrated that even very large datasets can contain incomplete combinations of related measurements.
+
+It also reinforced the importance of checking data completeness before performing climate analysis.
 
 ---
 
-# 6. New Zealand Temperature Analysis
+# 10. Geospatial Analysis
 
-The next stage focused on temperature observations from New Zealand weather stations.
+The project also included geographic analysis of New Zealand weather stations.
 
-The analysis included:
+Station metadata contained:
 
-- TMIN and TMAX
-- Station-level temperature trends
+```text
+Latitude
+Longitude
+```
+
+which allowed geographic distances between stations to be calculated.
+
+---
+
+## Haversine Distance
+
+I implemented the **Haversine formula** to calculate approximate great-circle distances between locations on the Earth.
+
+Conceptually, the calculation used:
+
+```text
+Station A
+Latitude / Longitude
+       │
+       ▼
+Haversine Distance
+       ▲
+       │
+Station B
+Latitude / Longitude
+```
+
+The Python function was registered as a **Spark User Defined Function (UDF)** so it could be applied within Spark.
+
+---
+
+## Pairwise Station Comparison
+
+New Zealand stations were compared using a Spark `CROSS JOIN`.
+
+The workflow was:
+
+```text
+NZ Stations
+     │
+     ├──── CROSS JOIN ──── NZ Stations
+     │
+     ▼
+Station Pairs
+     │
+     ▼
+Haversine UDF
+     │
+     ▼
+Distance Between Stations
+```
+
+This allowed station pairs to be compared geographically.
+
+The analysis identified **Paraparaumu AWS and Wellington Aero AWS** as the closest pair in the analysed set, with a calculated distance of approximately **50.53 km**.
+
+This part of the project demonstrated how custom geographic calculations can be integrated into a distributed Spark workflow.
+
+---
+
+# 11. New Zealand Temperature Analysis
+
+The next major part of the project focused specifically on New Zealand temperature observations.
+
+The analysis used:
+
+- `TMIN` – minimum temperature
+- `TMAX` – maximum temperature
+
+The analysed New Zealand dataset included:
+
+- **15 weather stations**
+- Temperature observations covering **1940–2025**
+
+The objective was to investigate long-term temperature patterns and differences between stations.
+
+---
+
+# 12. Preparing New Zealand Temperature Data
+
+The full daily dataset was filtered to retain:
+
+```text
+Country = New Zealand
+Element = TMIN or TMAX
+```
+
+The data was then transformed so that minimum and maximum temperatures could be analysed by:
+
+- Station
+- Date
+- Year
+- Month
+- Season
+
+The workflow was:
+
+```text
+3.1+ Billion Observations
+        ↓
+Filter NZ Stations
+        ↓
+Filter TMIN / TMAX
+        ↓
+Aggregate with Spark
+        ↓
+Smaller Analytical Dataset
+        ↓
+Convert to Pandas
+        ↓
+Visualise
+```
+
+An important design decision was to **aggregate the data in Spark before converting it to Pandas**.
+
+This avoided trying to move the complete distributed dataset into local memory.
+
+---
+
+# 13. Station-Level Temperature Trends
+
+Yearly average minimum and maximum temperatures were calculated for individual New Zealand weather stations.
+
+The analysis investigated:
+
+- Historical TMIN
+- Historical TMAX
 - Missing years
-- Seasonal patterns
-- Temperature distributions
-- National temperature trends
+- Long-term trends
+- Differences between stations
 
-The analysed New Zealand data covered the period from **1940 to 2025**.
-
-Fifteen New Zealand weather stations were included in the analysis.
+The visualisations made it possible to compare how temperatures changed across different locations and time periods.
 
 ---
 
-## Preparing Temperature Data
+# 14. Linear Regression Trend Analysis
 
-The daily dataset was filtered to retain:
+Linear regression was used to estimate long-term temperature trends for each station.
 
-- New Zealand stations
-- TMIN observations
-- TMAX observations
+The analysis used:
 
-The data was then reshaped so that TMIN and TMAX could be compared for each station and date.
+```python
+scipy.stats.linregress()
+```
 
-Aggregated Spark results were converted to Pandas only after the dataset had been reduced to a manageable size.
+Conceptually:
 
-This avoided attempting to load the complete Spark dataset into local memory.
+```text
+Year → Independent Variable
+Temperature → Dependent Variable
+```
 
----
-
-## Temperature Trend Analysis
-
-Yearly average TMIN and TMAX values were calculated for individual New Zealand stations.
-
-Linear regression was used to estimate the direction and rate of temperature change over time.
+The slope of the regression line was used to identify whether temperature showed an increasing or decreasing trend over time.
 
 The analysis found that:
 
-**11 of the 15 analysed stations showed increasing trends in both TMIN and TMAX.**
+**11 of the 15 analysed New Zealand stations showed increasing trends in both TMIN and TMAX.**
 
-However, station coverage varied considerably, so missing years and differences in station operating periods were considered when interpreting these trends.
+However, station records did not all cover exactly the same periods.
 
----
+For this reason, differences in:
 
-## Seasonal Temperature Patterns
+- station operating periods
+- missing years
+- observation coverage
 
-Monthly averages were calculated to investigate New Zealand's seasonal temperature pattern.
-
-The results showed the expected seasonal cycle:
-
-- Higher temperatures during summer
-- Lower temperatures during winter
-
-The analysis also examined temperature distributions for individual weather stations and for New Zealand overall.
+were important considerations when interpreting the results.
 
 ---
 
-# 7. Global Precipitation Analysis
+# 15. Seasonal Temperature Analysis
 
-The project also investigated global precipitation patterns.
+Temperature data was also analysed by month and season.
 
-The original dataset contained more than:
+Monthly average values were calculated to investigate New Zealand's seasonal temperature cycle.
 
-**1.07 billion precipitation observations.**
+The results showed the expected seasonal pattern:
 
-Before analysing rainfall, I performed data-quality checks using the GHCN quality flags.
+```text
+Summer
+   ↑
+Higher temperatures
 
-Records with non-null quality flags were removed from the analytical dataset.
+Winter
+   ↓
+Lower temperatures
+```
 
-This removed:
+This provided another way of validating and understanding the temperature data.
 
-**629,024 observations that failed quality checks.**
+---
 
-The cleaned precipitation data was then grouped by:
+# 16. Temperature Distribution Analysis
+
+The project also investigated the distribution of temperature observations.
+
+Visualisations were used to compare:
+
+- TMIN distributions
+- TMAX distributions
+- Differences between stations
+- National temperature patterns
+
+These analyses helped identify:
+
+- typical temperature ranges
+- variability
+- extreme values
+- differences between locations
+
+---
+
+# 17. Global Precipitation Analysis
+
+The second major visual analysis focused on global precipitation.
+
+The original dataset contained:
+
+**1,079,767,077 precipitation observations.**
+
+The analysis investigated precipitation by:
 
 - Year
 - Country
+- Observation count
+- Average precipitation
 
-Average daily precipitation was calculated for each country-year combination.
+Because the raw precipitation dataset itself contained more than one billion records, the data was processed and aggregated in Spark before visualisation.
 
 ---
 
-# 8. Outlier and Data Quality Investigation
+# 18. Precipitation Data Quality
 
-An important part of the analysis was determining whether extreme values represented genuine climate patterns or problems caused by limited observations.
+Before calculating global precipitation statistics, the GHCN quality flags were investigated.
 
-For example, some countries appeared to have extremely high average rainfall values.
+Only observations with acceptable quality information were retained for the main analysis.
 
-Instead of accepting these results directly, I investigated:
+The quality-control process removed:
+
+**629,024 precipitation observations.**
+
+Approximately:
+
+**1,079,138,053 observations**
+
+remained after this filtering stage.
+
+This demonstrated that data quality checks are essential even when working with established scientific datasets.
+
+---
+
+# 19. Country-Level Aggregation
+
+The cleaned precipitation data was grouped by:
+
+```text
+Country
++
+Year
+```
+
+Average daily precipitation was then calculated for each country-year combination.
+
+The workflow was:
+
+```text
+1.07+ Billion PRCP Observations
+        ↓
+Quality Filtering
+        ↓
+Join Station / Country Information
+        ↓
+Group by Country + Year
+        ↓
+Calculate Average Precipitation
+        ↓
+Store Aggregated Results
+        ↓
+Convert Small Results to Pandas
+        ↓
+Visualise
+```
+
+This approach allowed a very large raw dataset to be reduced to a manageable analytical dataset.
+
+---
+
+# 20. Investigating Extreme Precipitation Values
+
+Some countries appeared to have unusually high average precipitation values.
+
+Rather than assuming that these represented genuine national climate patterns, I investigated the underlying observations.
+
+The investigation considered:
 
 - Number of observations
+- Data coverage
 - Quality flags
-- Missing values
 - Extreme measurements
-- Sparse historical coverage
+- Sparse historical data
 
-This showed that some apparently extreme country averages were based on very small numbers of observations.
+This showed an important analytical issue:
 
-The analysis therefore demonstrated why aggregated statistics need to be interpreted together with data completeness and quality.
+> A very high average does not necessarily mean that a country generally receives extreme rainfall.
+
+For example, an average based on a very small number of observations may not be representative of the country's overall climate.
+
+Therefore, precipitation values were interpreted together with observation counts and data coverage.
 
 ---
 
-# 9. 2024 Global Rainfall Analysis
+# 21. 2024 Global Precipitation Analysis
 
-Average daily precipitation was analysed across countries for 2024.
+The project examined global precipitation patterns specifically for **2024**.
 
 The analysis included:
 
-- Descriptive statistics
+- Country-level average precipitation
+- Number of available observations
 - Distribution analysis
+- Descriptive statistics
 - Histograms
 - Box plots
-- Outlier detection
-- Rainiest countries
-- Driest countries
-- Observation-count validation
+- Outlier analysis
+- Countries with high precipitation
+- Countries with low precipitation
 
-The Interquartile Range (IQR) method was used to investigate unusually high precipitation values.
-
-This helped distinguish potentially meaningful values from results affected by sparse observations.
+The 2024 analysis contained precipitation information for **179 countries**, while some countries did not have usable observations for that year.
 
 ---
 
-# 10. Global Precipitation Map
+# 22. Outlier Detection
 
-A global choropleth map was created using Plotly.
+The precipitation distribution was investigated for unusually high values.
 
-Country names required additional cleaning before they could be mapped correctly.
+The **Interquartile Range (IQR)** method was used as part of the outlier investigation.
 
-The workflow included:
+Conceptually:
 
-1. Cleaning country names
-2. Removing additional territory descriptions
-3. Converting country names to ISO-3 codes
-4. Manually handling unmatched locations
-5. Connecting precipitation values to geographic locations
-6. Creating the interactive choropleth map
+```text
+Q1 = 25th percentile
+Q3 = 75th percentile
 
-The final visualisation showed geographic differences in average precipitation across countries.
+IQR = Q3 - Q1
+```
+
+Potential extreme observations can then be investigated relative to the central distribution.
+
+Importantly, values identified as statistical outliers were not automatically treated as errors.
+
+Instead, the underlying observation counts and data quality were examined before interpreting them.
 
 ---
 
-# Key Learnings
+# 23. Preparing Geographic Data
 
-This project gave me practical experience working with data at a scale much larger than typical in-memory analytics projects.
+Country names in the climate data did not always directly match the names expected by geographic visualisation libraries.
 
-The main areas I developed were:
+Additional cleaning was therefore required.
 
-- Large-scale data processing with Apache Spark
-- PySpark DataFrame operations
+The process included:
+
+```text
+GHCN Country Names
+        ↓
+Clean Country Names
+        ↓
+Standardise Names
+        ↓
+Convert to ISO-3 Codes
+        ↓
+Handle Unmatched Locations
+        ↓
+Join with Precipitation Results
+```
+
+This created geographic identifiers suitable for global mapping.
+
+---
+
+# 24. Global Precipitation Choropleth
+
+An interactive global precipitation map was created using **Plotly**.
+
+The map used ISO-3 country codes to connect precipitation values to geographic locations.
+
+The choropleth provided a geographic view of differences in average precipitation across countries.
+
+This stage combined:
+
+- Big-data processing
+- Geographic data preparation
+- Country-code standardisation
+- Aggregation
+- Interactive visualisation
+
+---
+
+# 25. Spark-to-Pandas Strategy
+
+A key technical principle throughout the project was deciding **when to use Spark and when to use Pandas**.
+
+Spark was used for:
+
+- Billions of raw records
+- Filtering
+- Joins
+- Grouping
+- Aggregation
+- Large-scale validation
+- Data transformation
+
+Pandas was used only after Spark had reduced the data to a manageable size.
+
+The general strategy was:
+
+```text
+Very Large Dataset
+        ↓
+Apache Spark
+        ↓
+Filter / Join / Aggregate
+        ↓
+Small Result Dataset
+        ↓
+Pandas
+        ↓
+Matplotlib / Plotly
+```
+
+This avoided unnecessary memory problems and provided a practical workflow for combining distributed processing with Python visualisation libraries.
+
+---
+
+# 26. Key Findings
+
+## Dataset Scale
+
+The project successfully processed a daily climate dataset containing:
+
+**3,139,143,397 observations**
+
+covering the period:
+
+**1750–2025**
+
+---
+
+## Core Weather Measurements
+
+Precipitation was the most frequently recorded core weather element:
+
+**1,079,767,077 PRCP observations**
+
+followed by TMAX, TMIN, SNOW and SNWD.
+
+---
+
+## Data Completeness
+
+The analysis identified:
+
+**10,660,214 TMAX observations without corresponding TMIN observations**
+
+across:
+
+**28,754 stations**
+
+demonstrating the importance of completeness checks.
+
+---
+
+## New Zealand Temperature
+
+Temperature data from **15 New Zealand stations** was analysed across the available period from **1940–2025**.
+
+Linear trend analysis found that:
+
+**11 of 15 stations showed increasing trends in both minimum and maximum temperatures.**
+
+These results were interpreted with consideration of different station operating periods and missing observations.
+
+---
+
+## Global Precipitation
+
+More than **1.07 billion precipitation observations** were processed.
+
+Quality filtering removed:
+
+**629,024 observations**
+
+before country-level precipitation analysis.
+
+The analysis also showed that extreme country-level averages need to be interpreted carefully when observation coverage is limited.
+
+---
+
+# 27. Key Skills Demonstrated
+
+This project demonstrates practical experience across several areas of data engineering and analytics.
+
+### Big Data Processing
+
+- Apache Spark
+- PySpark
+- Distributed data processing
+- Spark DataFrames
 - Processing billions of records
-- Schema design
-- Fixed-width file parsing
-- Data cleaning and transformation
-- Large-scale joins
-- Spark query optimisation
+- Large-scale filtering
+- Large-scale aggregation
+- Join optimisation
+
+### Cloud Data
+
+- Microsoft Azure
 - Azure Blob Storage
-- Parquet data storage
-- Data quality validation
-- Statistical analysis
+- Reading cloud-hosted datasets
+- Writing processed datasets to cloud storage
+
+### Data Engineering
+
+- Explicit schema creation
+- Fixed-width file parsing
+- Data cleaning
+- Data transformation
+- Metadata integration
+- Data validation
+- Parquet storage
+- Efficient join strategies
+
+### Data Analysis
+
+- Exploratory data analysis
+- Data quality analysis
+- Missing-data investigation
+- Descriptive statistics
 - Time-series analysis
-- Geospatial calculations
-- Climate data analysis
-- Pandas and Matplotlib visualisation
-- Plotly geospatial visualisation
+- Statistical trend analysis
+- Outlier investigation
 
-One of the most important lessons from the project was that working with large datasets is not only about obtaining results. The choice of data structures, joins, storage formats, aggregation methods, and memory-management strategies can significantly affect whether an analysis is practical.
+### Geospatial Analysis
 
-The project also reinforced the importance of investigating missing data, sparse observations, quality flags, and outliers before interpreting analytical results.
+- Latitude/longitude processing
+- Haversine distance
+- Spark UDFs
+- Pairwise station comparison
+- Country-code standardisation
+- Choropleth mapping
+
+### Visualisation
+
+- Pandas
+- Matplotlib
+- Plotly
+- Time-series charts
+- Distribution plots
+- Histograms
+- Box plots
+- Interactive geographic maps
 
 ---
 
-# Repository Structure
+# 28. Repository Structure
 
 ```text
 01-GHCN-Climate-Analysis/
 │
 ├── README.md
+│
 ├── 1_Processing.ipynb
 ├── 2_Analysis.ipynb
 └── 3_Visualisation.ipynb
+```
+
+### `1_Processing.ipynb`
+
+Contains the data preparation workflow, including:
+
+- Dataset exploration
+- Schema definition
+- Fixed-width metadata parsing
+- Country and state processing
+- Inventory processing
+- Station metadata enrichment
+- Data cleaning
+- Parquet output
+- Station-ID validation
+- Join optimisation
+
+### `2_Analysis.ipynb`
+
+Contains the large-scale Spark analysis, including:
+
+- Weather-station statistics
+- Country and geographic analysis
+- Core weather element counts
+- TMAX/TMIN completeness analysis
+- New Zealand station selection
+- Haversine distance calculations
+
+### `3_Visualisation.ipynb`
+
+Contains the analytical visualisations, including:
+
+- New Zealand TMIN/TMAX analysis
+- Station-level temperature trends
+- Linear regression
+- Seasonal temperature patterns
+- Temperature distributions
+- Global precipitation trends
+- 2024 precipitation analysis
+- Outlier investigation
+- Global precipitation choropleth
+
+---
+
+# 29. What I Learned
+
+This project provided practical experience working with a dataset far larger than a typical local analytics dataset.
+
+One of the most important lessons was that **big-data analysis requires thinking carefully about how the data is processed, not only what analysis is performed**.
+
+For example, instead of performing an expensive join against billions of daily observations, station IDs could first be reduced to distinct values and compared using a LEFT ANTI JOIN.
+
+Another important lesson was knowing when to use distributed and local tools.
+
+Apache Spark was appropriate for processing billions of observations, while Pandas and visualisation libraries became useful only after the data had been aggregated to a manageable size.
+
+The project also reinforced the importance of data quality. Missing TMIN observations, quality-flagged precipitation records, sparse country coverage, and extreme values all showed why analytical results need to be validated before they are interpreted.
+
+Finally, the project demonstrated how large-scale data engineering and analytics can work together:
+
+```text
+Raw Climate Data
+        ↓
+Distributed Processing
+        ↓
+Cleaning & Validation
+        ↓
+Metadata Integration
+        ↓
+Large-Scale Analysis
+        ↓
+Statistical / Geospatial Analysis
+        ↓
+Aggregation
+        ↓
+Visualisation
+        ↓
+Interpretation
+```
+
+---
+
+## Academic Context
+
+This project was completed as part of **DATA420 - Scalable Data Science** at the **University of Canterbury**.
+
+It demonstrates the practical application of **Apache Spark, PySpark, Azure Blob Storage, large-scale data processing, data quality analysis, geospatial analysis, time-series analysis, statistical analysis, and data visualisation** using a real-world global climate dataset.
